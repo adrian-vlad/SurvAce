@@ -176,7 +176,7 @@ Having found all of these pieces it was only a matter of assembling and packagin
 ## Authors
 * **Adrian Vlad** - scripts and html pages
 
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/adrian-vlad/SurvAce/contributors) who participated in this project.
 
 ## License
 This project is licenced under GNU LESSER GENERAL PUBLIC LICENSE. Please see [COPYING](COPYING) and [COPYING.LESSER](COPYING.LESSER) for details.
