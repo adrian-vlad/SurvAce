@@ -156,6 +156,7 @@ SurvAce is in an incipient stage. This makes it very rough and, perhaps, not so 
 TODO
 
 ## TODO
+- add some images to this readme;
 - it seems there is a problem when a maximum of 2 live view pages can be opened at a moment;
 - add play speed modifier buttons.
 
