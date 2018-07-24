@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Recordings</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 25px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: #4CAF50;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<div id="cameras">
+    <!-- this is where cameras will be loaded dynamically -->
+</div>
+
+<div id="controls" width=100%>
+    <div>
+        <!-- stock controls: play, pause, current time etc -->
+        <button id="play"           style="float: left;"    onclick="play()">&gt;</button>
+        <button id="pause"          style="float: left;"    onclick="stop()">||</button>
+        <button id="toggleControls" style="float: right;"   onclick="ToggleById('controllerDiv'); updateVideoDimensions()">=</button>
+        <div id="DateTimeValue"     style="display: table; margin: auto;"></div>
+    </div>
+    <div id="controllerDiv">
+        <!-- this is where the custom controller sliders and dialers are created -->
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.11.2/moment.min.js"></script>
+<script>
+//TODO: replace with wrapper object over dom elements instead of extending the elements
+//TODO: sliderele se misca din sageti, dar nu se updateaza timpul
+/**
+ * @brief Creates a dom element that contains various other elements used to select the moment of the recording
+ * @param lowTimestamp (int):
+ *          the millis timestamp of the earliest recording
+ * @param highTimestamp (int):
+ *          the millis timestamp of the latest recording
+ * @param updateTimestampCb (function(int millisTimestamp)):
+ *          function to be called when the viewing timestamp changes
+ * @param pauseCb (function()):
+ *          function to be called for pausing the viewing
+ * @param resumeCb (function()):
+ *          function to be called for resuming the viewing
+ * @return a dom element to be added in the page
+ *
+ * @method setTimestamp(int millisTimestamp):
+ *          sets a millis timestamp on this element
+ */
+function DateTimeSliders(lowTimestamp, highTimestamp, updateTimestampCb, pauseCb, resumeCb)
+{
+    /* create a div where we're going to attach the sliders */
+    var innerDiv = document.createElement("div");
+
+    /* sliders */
+    var dayMilis = 86400000;
+    var hourMilis = 3600000;
+    var minuteMilis = 60000;
+    var secondMilis = 1000;
+
+    var firstDayTimestamp = moment(lowTimestamp).startOf("day");
+
+    function sliderCreate(min, max, value, className) {
+        var slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = min;
+        slider.max = max;
+        slider.value = value;
+        slider.className = className;
+
+        slider.oninput = function() { updateTimestampCb(_getTimestamp()); };
+        slider.wasMouseDown = false;
+        slider.onmousedown = function() { this.wasMouseDown = true; pauseCb(); };
+        slider.onmouseup = function() { if (this.wasMouseDown) resumeCb(); this.wasMouseDown = false; };
+        slider.ontouchstart = function() { this.wasMouseDown = true; pauseCb(); };
+        slider.ontouchend = function() { if (this.wasMouseDown) resumeCb(); this.wasMouseDown = false; };
+
+        return slider;
+    };
+    var dayRangeSlider = sliderCreate(0, 100, 50, "slider");
+    var hourRangeSlider = sliderCreate(0, 23, 8, "slider");
+    var minuteRangeSlider = sliderCreate(0, 59, 5, "slider");
+    var secondRangeSlider = sliderCreate(0, 59, 5, "slider");
+
+    /* limits */
+    dayRangeSlider.min = 0;
+    dayRangeSlider.max = moment(highTimestamp).diff(moment(lowTimestamp), "days") + 1;
+    dayRangeSlider.value = parseInt((parseInt(dayRangeSlider.max) + parseInt(dayRangeSlider.min)) / 2);
+
+    /* add sliders to the div */
+    innerDiv.appendChild(dayRangeSlider);
+    innerDiv.appendChild(hourRangeSlider);
+    innerDiv.appendChild(minuteRangeSlider);
+    innerDiv.appendChild(secondRangeSlider);
+
+    /* functions */
+    function _getTimestamp()
+    {
+        return  firstDayTimestamp.valueOf() +
+                parseInt(dayRangeSlider.value) * dayMilis +
+                parseInt(hourRangeSlider.value) * hourMilis +
+                parseInt(minuteRangeSlider.value) * minuteMilis +
+                parseInt(secondRangeSlider.value) * secondMilis;
+    };
+    innerDiv.setTimestamp = function(timestamp) {
+        var m = moment(timestamp);
+        var tmp = moment(firstDayTimestamp);
+
+        dayRangeSlider.value = m.diff(tmp, "days");
+        tmp.add(parseInt(dayRangeSlider.value), "day");
+        hourRangeSlider.max = parseInt(moment(tmp).add(1, "day").diff(tmp, "hours")) - 1;
+        hourRangeSlider.value = m.diff(tmp, "hours");
+        tmp.add(parseInt(hourRangeSlider.value), "hour");
+        minuteRangeSlider.value = m.diff(tmp, "minutes");
+        tmp.add(parseInt(minuteRangeSlider.value), "minute");
+        secondRangeSlider.value = m.diff(tmp, "seconds");
+    };
+
+    /* initialize sliders' positions */
+    innerDiv.setTimestamp(_getTimestamp());
+
+    return innerDiv;
+}
+</script>
+
+<script>
+/**
+ * @brief Creates a video element that knows if the user clicked play/pause or that the play/pause was called from the code
+ * @param name (str):
+ *          name of the element
+ * @param onSeekCb (function(int millisTimestamp)):
+ *          function to be called when the user seeks on the video element
+ * @param shouldPlayCb (function()):
+ *          function that tells if the video should be playing or not
+ * @param playCb (function()):
+ *          function to be called when the user presses the play button
+ * @param stopCb (function()):
+ *          function to be called when the user presses the pause button
+ * @param endedCb (function(str name)):
+ *          function to be called when the video ends
+ * @return a video dom element to be added in the page
+ *
+ * @method doPlay():
+ *          starts playing this video
+ * @method doPause():
+ *          pauses this video
+ * @method doLoad(str source, int millisTimestamp, int seekTime):
+ *          loads a new source
+ * @method doUpdate(int millisTimestamp):
+ *          should be called as often as possible
+ */
+function UserInputVideo(name, onSeekCb, shouldPlayCb, playCb, stopCb, endedCb)
+{
+    var video = document.createElement("video");
+    video.id = name;
+    video.controls = true;
+
+    /* private properties */
+    video._timestamp = 0;
+    video._wasClick = true;
+    video._wasSeek = true;
+    video._wasLoaded = true;
+
+    /* private functions */
+    video._canBePlayed = function() {
+        return this.readyState != 0;
+    }
+    video._getCurrentTimestamp = function() {
+        return parseInt(this._timestamp + this.currentTime * 1000);
+    }
+
+    /* native video callbacks */
+    video.onseeking = function() {
+        if (this._wasSeek)
+            onSeekCb(this._getCurrentTimestamp());
+
+        this._wasClick = true;
+        this._wasSeek = true;
+    };
+    video.onloadeddata = function() {
+        this._wasLoaded = true;
+    };
+    video.oncanplaythrough = function() {
+        if (this._wasLoaded)
+        {
+            if (this.paused && shouldPlayCb())
+            {
+                this._wasClick = false;
+                this.play();
+            }
+        }
+
+        this._wasLoaded = false;
+    };
+    video.onplaying = function() {
+        this._wasClick = true;
+    };
+    video.onplay = function() {
+        /**
+         * We presume that the play was from a user click
+         */
+        if (!this._wasClick)
+        {
+            /**
+             * If somewhere else _wasClick was unset, then there was no user click
+             */
+            this._wasClick = true;
+            return;
+        }
+
+        playCb();
+    };
+    video.onpause = function() {
+        /**
+            * We presume that the pause was from a user click
+            */
+        if (this.currentTime == this.duration ||    /* video ended */
+            !this._wasClick)                     /* or it was not a user click */
+        {
+            /* video has ended */
+            this._wasClick = true;
+            return;
+        }
+
+        stopCb();
+    };
+
+    /* public functions */
+    video.doPlay = function() {
+        if (this._wasLoaded)
+            return;
+        if (!this._canBePlayed())
+            return;
+
+        if (this.paused)
+        {
+            this._wasClick = false;
+
+            this.play();
+        }
+    };
+    video.doPause = function() {
+        if (!this._canBePlayed())
+            return;
+
+        if (!this.paused)
+        {
+            this._wasClick = false;
+
+            this.pause();
+        }
+    };
+    video.doLoad = function(src, timestamp, seekTime) {
+        if (!this._canBePlayed())
+        {
+            this.src = src;
+            this._timestamp = timestamp;
+            this.currentTime = seekTime;
+        }
+        else
+        {
+            if (this.src != src)
+            {
+                this.src = src;
+                this._timestamp = timestamp;
+            }
+            if (this.currentTime != seekTime)
+                this.currentTime = seekTime;
+        }
+
+        this._wasSeek = false;
+    };
+    video.doUpdate = function(timestamp) {
+        if (this._canBePlayed() && !this.ended)
+            /* adjust the playback rate so that in the next 3 seconds the video timestamp aligns with the timestamp parameter */
+            this.playbackRate = 1 + (timestamp - this._getCurrentTimestamp()) / (3 * 1000);
+        else
+            endedCb(this.id);
+    };
+
+    /*
+    if (name == "cam1")
+    {
+        video.onabort = function() { console.log("onabort"); };
+        video.oncanplay = function() { console.log("oncanplay"); };
+        video.oncanplaythrough = function() { console.log("oncanplaythrough"); };
+        video.oncuechange = function() { console.log("oncuechange"); };
+        video.ondurationchange = function() { console.log("ondurationchange"); };
+        video.onemptied = function() { console.log("onemptied"); };
+        video.onended = function() { console.log("onended"); };
+        video.onerror = function() { console.log("onerror"); };
+        video.onloadeddata = function() { console.log("onloadeddata"); };
+        video.onloadedmetadata = function() { console.log("onloadedmetadata"); };
+        video.onloadstart = function() { console.log("onloadstart"); };
+        video.onratechange = function() { console.log("onratechange"); };
+        video.onseeked = function() { console.log("seeked"); };
+        video.onseeking = function() { console.log("onseeking"); };
+        video.onstalled = function() { console.log("onstalled"); };
+        video.ontimeupdate = function() { console.log("ontimeupdate"); };
+        video.onvolumechange = function() { console.log("onvolumechange"); };
+        video.onwaiting = function() { console.log("onwaiting"); };
+        video.onplay = function() { console.log("onplay"); };
+        video.onplaying = function() { console.log("onplaying"); };
+        video.onpause = function() { console.log("onpause"); };
+    }*/
+
+    return video;
+}
+</script>
+
+<script>
+/**
+ * @brief Calculates the best arrangement of identical elements to fill the most part of a rectangular surface
+ * @param w (int):
+ *          width of the surface
+ * @param h (int):
+ *          height of the surface
+ * @param eWtoHratio (float):
+ *          the width to height ratio of the elements
+ * @param n (int):
+ *          the number of elements
+ * @return a width percentage of an element from the width of the surface
+ */
+function SurfaceSplit(w, h, eWtoHratio, n)
+{
+    var widthPercent = 0;
+    if (w == 0 || h == 0 || eWtoHratio == 0 || n == 0)
+        return widthPercent;
+
+        var ratio = w / h;
+
+    /* calculate approximate number of elements that fit each dimension */
+    var wc = Math.sqrt(n * ratio / eWtoHratio);
+    var hc = Math.sqrt(n * eWtoHratio / ratio);
+    if (wc < hc)
+    {
+        wc = Math.floor(wc);
+        hc = Math.ceil(hc) + 1;
+    }
+    else
+    {
+        wc = Math.ceil(wc) + 1;
+        hc = Math.floor(hc);
+    }
+
+    /* try to find a split that occupies the biggest surface */
+    var climit = Math.ceil(Math.sqrt(n));
+    var smallestRemainingSpace = w * h;
+    var i;
+
+    for (i = (wc >= climit ? wc : climit); i > 0; i--)
+    {
+        /* try to arrange i elements per line */
+        var j = Math.ceil(n / i);
+        var segment = w / i / eWtoHratio;
+        if (i / j < ratio / eWtoHratio)
+            /* elements' total surface too big */
+            continue;
+
+        var remainingSpace = w * h - n * (segment * segment * eWtoHratio);
+        if (remainingSpace >= 0 &&
+            remainingSpace < smallestRemainingSpace)
+        {
+            /* good arrangement */
+            smallestRemainingSpace = remainingSpace;
+            widthPercent = 100 / i;
+        }
+    }
+
+    for (i = (hc >= climit ? hc : climit); i > 0; i--)
+    {
+        /* try to arrange i elements per column */
+        var j = Math.ceil(n / i);
+        var segment = h / i;
+        if (j / i > ratio / eWtoHratio)
+            /* elements' total surface too big */
+            continue;
+
+        var remainingSpace = w * h - n * (segment * segment * eWtoHratio);
+        if (remainingSpace >= 0 &&
+            remainingSpace < smallestRemainingSpace)
+        {
+            smallestRemainingSpace = remainingSpace;
+            widthPercent = 100 / i * eWtoHratio / ratio;
+        }
+    }
+
+    return widthPercent;
+}
+</script>
+
+<script>
+/**
+ * @brief A close to realtime timer
+ * @param seconds (int):
+ *          the number of seconds to wait until the callback is called
+ * @param oncomplete (function()):
+ *          called after the timer expires
+ * @return a timer object
+ *
+ * @method start():
+ *          starts the timer
+ * @method pause():
+ *          pause the timer
+ * @method resume():
+ *          resumes the timer
+ */
+function Timer(seconds, oncomplete)
+{
+    this.timerWindow;
+    this.wait = seconds * 1000;
+    this.timeout = this.wait;
+    this.elapsed = 0;
+    this.timestamp = 0;
+    this.stepValue = 10;
+    this.oncomplete = oncomplete;
+    this.started = false;
+    this.running = false;
+
+    this.start = function() {
+        this.started = true;
+        this.running = true;
+        this.elapsed = 0;
+        this.timestamp = new Date().getTime();
+        this.step();
+    };
+    this.step = function() {
+        var timestamp = new Date().getTime();
+        this.elapsed += timestamp - this.timestamp;
+        this.timestamp = timestamp;
+        var remaining = this.timeout - this.elapsed;
+        if (remaining <= 0)
+        {
+            this.timeout = this.wait + remaining;
+            this.start();
+            if (this.oncomplete)
+                this.oncomplete();
+        }
+        else
+        {
+            var newStep = (remaining < this.stepValue) ? remaining : this.stepValue;
+            clearTimeout(this.timerWindow);
+            this.timerWindow = setTimeout(this.step.bind(this), newStep);
+        }
+    };
+    this.pause = function() {
+        clearTimeout(this.timerWindow);
+        this.elapsed += new Date().getTime() - this.timestamp;
+        this.running = false;
+    };
+    this.resume = function() {
+        if (this.running)
+            return;
+        if (!this.started)
+            this.start();
+        this.timestamp = new Date().getTime();
+        this.step();
+    };
+}
+</script>
+
+<script>
+/**
+ * @brief Adds an event to an object
+ * @param object (object):
+ *          object to attach the event to
+ * @param type (str):
+ *          event name
+ * @param callback (function()):
+ *          function to be called when the event triggers
+ */
+function AddEvent(object, type, callback)
+{
+    if (object == null || typeof(object) == 'undefined')
+        return;
+    if (object.addEventListener)
+        object.addEventListener(type, callback, false);
+    else if (object.attachEvent)
+        object.attachEvent("on" + type, callback);
+    else
+        object["on" + type] = callback;
+}
+
+/**
+ * @brief Toggles hide or show a dom element
+ * @param name (str):
+ *          id of the dom element
+ */
+function ToggleById(name)
+{
+    var x = document.getElementById(name);
+    if (x.style.display === "none")
+        x.style.display = "block";
+    else
+        x.style.display = "none";
+}
+</script>
+
+<script>
+/* global variables */
+var recordings;
+var camerasCount = 0;
+var playing = false;
+var timer = new Timer(1, updateSecond);
+var currentTimestamp = new Date();
+var videoStyleSheet;
+{
+    var videoStyle = document.createElement("style");
+    videoStyle.appendChild(document.createTextNode(""));
+    document.head.appendChild(videoStyle);
+    videoStyleSheet = videoStyle.sheet;
+}
+
+/* initial prepare */
+{
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/recordings.json", true);
+    xmlhttp.send();
+
+    xmlhttp.onreadystatechange = function() {
+        if (this.readyState != 4)
+            return;
+        if (this.status != 200)
+        {
+            alert("Failed to get list of files");
+            return
+        }
+
+        /* store all the recording files that we have */
+        recordings = JSON.parse(this.responseText);
+        camerasCount = Object.keys(recordings.cameras).length;
+
+        /* add the cameras */
+        for (var camera in recordings.cameras)
+        {
+            /* create new element for the camera */
+            document.getElementById("cameras").appendChild(
+                UserInputVideo(camera, updateTimestamp, shouldPlay, play, stop, loadNext));
+
+            /* sort the files chronologically */
+            recordings.cameras[camera].files.sort(function(file1, file2) {
+                return (file1.timestamp > file2.timestamp) ? 1 : ((file2.timestamp > file1.timestamp) ? -1 : 0);
+            });
+        }
+
+        /* add the sliders */
+        var dateTimeSliders = DateTimeSliders(
+            recordings.lowest_timestamp,
+            recordings.biggest_timestamp,
+            updateTimestamp,
+            pause,
+            resume);
+        dateTimeSliders.id = "dateTimeController";
+        document.getElementById("controllerDiv").appendChild(dateTimeSliders);
+
+        /* initialize timestamp */
+        updateTimestamp(parseInt(recordings.lowest_timestamp));
+
+        AddEvent(window, "resize", updateVideoDimensions);
+        updateVideoDimensions();
+    };
+}
+
+/**
+ * Updates
+ */
+function updateTimestamp(timestamp)
+{
+    setCurrentTimestamp(timestamp);
+    setControllerTimestamp(timestamp);
+    setDisplayTimestamp(timestamp);
+}
+function updateSecond()
+{
+    updateTimestamp(getCurrentTimestamp() + 1000);
+
+    updateAll(getCurrentTimestamp());
+}
+
+/**
+ * Display interactions
+ */
+function setDisplayTimestamp(timestamp)
+{
+    document.getElementById("DateTimeValue").innerHTML = new Date(timestamp).toLocaleTimeString(
+        "ro-RO",
+        { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric", hour12: false });
+}
+
+function updateVideoDimensions()
+{
+    /* calculate the new width for each video */
+    var widthPercent = SurfaceSplit(
+                        window.innerWidth,
+                        window.innerHeight - document.getElementById("controls").offsetHeight - 15,
+                        16 / 9,
+                        camerasCount);
+
+    /* delete old rules */
+    while (videoStyleSheet.cssRules.length != 0)
+        videoStyleSheet.deleteRule(0);
+
+    /* add the new rule */
+    videoStyleSheet.insertRule("video { width: " + widthPercent + "%; }");
+}
+
+/**
+ * Controller interactions
+ */
+function setControllerTimestamp(timestamp)
+{
+    document.getElementById("dateTimeController").setTimestamp(timestamp);
+}
+
+/**
+ * Current timestamp interactions
+ */
+function setCurrentTimestamp(timestamp)
+{
+    currentTimestamp.setTime(timestamp);
+}
+function getCurrentTimestamp()
+{
+    return currentTimestamp.getTime();
+}
+
+/**
+ * Videos interactions
+ */
+function shouldPlay()
+{
+    return playing;
+}
+function play()
+{
+    playing = true;
+    resume();
+}
+function stop()
+{
+    pause();
+    playing = false;
+}
+function resume()
+{
+    loadAll();
+
+    if (playing)
+    {
+        timer.resume();
+        playAll();
+    }
+}
+function pause()
+{
+    if (playing)
+    {
+        timer.pause();
+        pauseAll();
+    }
+}
+
+function loadNext(camera)
+{
+    var cameraElem = document.getElementById(camera);
+    var timestamp = getCurrentTimestamp();
+    var file = function (files, timestamp) {
+        var startIdx = 0;
+        var endIdx = files.length - 1;
+        if (files[startIdx].timestamp - timestamp > 0 || files[endIdx].timestamp - timestamp < 0)
+            return null;
+
+        function getFileBinarySearch(files, startIdx, endIdx, timestamp)
+        {
+            if (startIdx == endIdx || startIdx + 1 == endIdx)
+                return files[startIdx];
+
+            var middleIdx = parseInt((startIdx + endIdx) / 2);
+            var compare = timestamp - files[middleIdx].timestamp;
+            if (compare == 0)
+                return files[middleIdx];
+            else if (compare < 0)
+                return getFileBinarySearch(files, startIdx, middleIdx, timestamp);
+            else
+                return getFileBinarySearch(files, middleIdx, endIdx, timestamp);
+        }
+
+        return getFileBinarySearch(files, 0, files.length - 1, timestamp);
+    } (recordings.cameras[camera].files, timestamp);
+
+    if (file != null)
+    {
+        var mili = timestamp - file.timestamp;
+        if (mili < file.duration)
+        {
+            var newSrc = "/" + file.path;
+            cameraElem.doLoad(newSrc, file.timestamp, mili / 1000);
+        }
+        else
+        {
+            cameraElem.doLoad("", 0, 0);
+        }
+    }
+    else
+    {
+        cameraElem.doLoad("", 0, 0);
+    }
+}
+function loadAll()
+{
+    for (var camera in recordings.cameras)
+        loadNext(camera);
+}
+function playAll()
+{
+    for (var camera in recordings.cameras)
+        document.getElementById(camera).doPlay();
+}
+function pauseAll()
+{
+    for (var camera in recordings.cameras)
+        document.getElementById(camera).doPause();
+}
+function updateAll(timestamp)
+{
+    for (var camera in recordings.cameras)
+        document.getElementById(camera).doUpdate(timestamp);
+}
+</script>
+
+</body>
+</html>

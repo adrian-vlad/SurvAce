@@ -1,0 +1,202 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Live view</title>
+<script src="js/adapter.js"></script>
+<script src="js/h5splayer.js"></script>
+
+</head>
+
+<body>
+<div id="cameras">
+    <!-- this is where cameras will be loaded dynamically -->
+</div>
+</body>
+
+<script>
+/**
+ * @brief Calculates the best arrangement of identical elements to fill the most part of a rectangular surface
+ * @param w (int):
+ *          width of the surface
+ * @param h (int):
+ *          height of the surface
+ * @param eWtoHratio (float):
+ *          the width to height ratio of the elements
+ * @param n (int):
+ *          the number of elements
+ * @return a width percentage of an element from the width of the surface
+ */
+function SurfaceSplit(w, h, eWtoHratio, n)
+{
+    var widthPercent = 0;
+    if (w == 0 || h == 0 || eWtoHratio == 0 || n == 0)
+        return widthPercent;
+
+        var ratio = w / h;
+
+    /* calculate approximate number of elements that fit each dimension */
+    var wc = Math.sqrt(n * ratio / eWtoHratio);
+    var hc = Math.sqrt(n * eWtoHratio / ratio);
+    if (wc < hc)
+    {
+        wc = Math.floor(wc);
+        hc = Math.ceil(hc) + 1;
+    }
+    else
+    {
+        wc = Math.ceil(wc) + 1;
+        hc = Math.floor(hc);
+    }
+
+    /* try to find a split that occupies the biggest surface */
+    var climit = Math.ceil(Math.sqrt(n));
+    var smallestRemainingSpace = w * h;
+    var i;
+
+    for (i = (wc >= climit ? wc : climit); i > 0; i--)
+    {
+        /* try to arrange i elements per line */
+        var j = Math.ceil(n / i);
+        var segment = w / i / eWtoHratio;
+        if (i / j < ratio / eWtoHratio)
+            /* elements' total surface too big */
+            continue;
+
+        var remainingSpace = w * h - n * (segment * segment * eWtoHratio);
+        if (remainingSpace >= 0 &&
+            remainingSpace < smallestRemainingSpace)
+        {
+            /* good arrangement */
+            smallestRemainingSpace = remainingSpace;
+            widthPercent = 100 / i;
+        }
+    }
+
+    for (i = (hc >= climit ? hc : climit); i > 0; i--)
+    {
+        /* try to arrange i elements per column */
+        var j = Math.ceil(n / i);
+        var segment = h / i;
+        if (j / i > ratio / eWtoHratio)
+            /* elements' total surface too big */
+            continue;
+
+        var remainingSpace = w * h - n * (segment * segment * eWtoHratio);
+        if (remainingSpace >= 0 &&
+            remainingSpace < smallestRemainingSpace)
+        {
+            smallestRemainingSpace = remainingSpace;
+            widthPercent = 100 / i * eWtoHratio / ratio;
+        }
+    }
+
+    return widthPercent;
+}
+
+function LiveViewVideo(name)
+{
+    var video = document.createElement("video");
+    video.id = name;
+    video.controls = true;
+    video.autoplay = true;
+
+    var conf = {
+        //TODO: replace this back to "videodom" once h5stream is fixed
+        I: video,
+        protocol: window.location.protocol, //http: or https:
+        host: window.location.host, //localhost:8080
+        rootpath: "/", // '/'
+        token: name,
+        hlsver:'v1', //v1 is for ts, v2 is for fmp4
+        session:'c1782caf-b670-42d8-ba90-2244d0b0ee83' //session got from login
+    };
+    video._myPlayer = new H5sPlayerRTC(conf);
+    video._myPlayer.connect();
+
+    return video;
+}
+
+/**
+ * @brief Adds an event to an object
+ * @param object (object):
+ *          object to attach the event to
+ * @param type (str):
+ *          event name
+ * @param callback (function()):
+ *          function to be called when the event triggers
+ */
+function AddEvent(object, type, callback)
+{
+    if (object == null || typeof(object) == 'undefined')
+        return;
+    if (object.addEventListener)
+        object.addEventListener(type, callback, false);
+    else if (object.attachEvent)
+        object.attachEvent("on" + type, callback);
+    else
+        object["on" + type] = callback;
+}
+</script>
+
+
+<script>
+var recordings;
+var camerasCount = 0;
+var videoStyleSheet;
+{
+    var videoStyle = document.createElement("style");
+    videoStyle.appendChild(document.createTextNode(""));
+    document.head.appendChild(videoStyle);
+    videoStyleSheet = videoStyle.sheet;
+}
+
+/* initial prepare */
+{
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/recordings.json", true);
+    xmlhttp.send();
+
+    xmlhttp.onreadystatechange = function() {
+        if (this.readyState != 4)
+            return;
+        if (this.status != 200)
+        {
+            alert("Failed to get list of files");
+            return
+        }
+
+        /* store all the recording files that we have */
+        recordings = JSON.parse(this.responseText);
+        camerasCount = Object.keys(recordings.cameras).length;
+
+        /* add the cameras */
+        for (var camera in recordings.cameras)
+        {
+            /* create new element for the camera */
+            document.getElementById("cameras").appendChild(LiveViewVideo(camera));
+        }
+
+        AddEvent(window, "resize", updateVideoDimensions);
+        updateVideoDimensions();
+    };
+}
+
+function updateVideoDimensions()
+{
+    /* calculate the new width for each video */
+    var widthPercent = SurfaceSplit(
+                        window.innerWidth,
+                        window.innerHeight - 15,
+                        16 / 9,
+                        camerasCount);
+
+    /* delete old rules */
+    while (videoStyleSheet.cssRules.length != 0)
+        videoStyleSheet.deleteRule(0);
+
+    /* add the new rule */
+    videoStyleSheet.insertRule("video { width: " + widthPercent + "%; }");
+}
+</script>
+
+</html>
