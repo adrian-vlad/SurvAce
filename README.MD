@@ -1,6 +1,6 @@
 # SurvAce
 
-A free and fast NVR-like surveillance system.
+A free and lightweight NVR-like surveillance system.
 
 ## Getting Started
 SurvAce is a collection of free tools that work together to act as a video surveillance system. SurvAce is only the software part. The hardware part can be any surveillance camera that streams h264 encoded video via RTSP stream.
