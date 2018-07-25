@@ -416,15 +416,6 @@ function conf_supervisord
 
 function install_all
 {
-    # stop supervisor
-    sudo supervisorctl stop survace_process_listener || true
-    sudo supervisorctl stop survace_interval_listener || true
-    sudo supervisorctl stop survace_h5stream || true
-    for ((i = 1; i <= $CAM_COUNT; i++))
-    do
-        sudo supervisorctl stop ${SUPERVISOR_GROUP_CAM_PREFIX}${i}: || true
-    done
-
     # unmount the directories
     recordings_dir=`python -c "import os; print(os.path.realpath(\"$H5STREAM_INSTALL_DIR/www/recordings/\"))"`
     h5stream_temp_dir=`python -c "import os; print(os.path.realpath(\"$H5STREAM_INSTALL_DIR/www/hls/\"))"`
@@ -521,15 +512,9 @@ function install_all
     sudo mount "${recordings_dir}"
     sudo mount "${h5stream_temp_dir}"
 
-    # start supervisor
+    # reload supervisor configuration for survace
     sudo supervisorctl reread
-    for ((i = 1; i <= $CAM_COUNT; i++))
-    do
-        sudo supervisorctl start ${SUPERVISOR_GROUP_CAM_PREFIX}${i}: || true
-    done
-    sudo supervisorctl start survace_h5stream || true
-    sudo supervisorctl start survace_interval_listener || true
-    sudo supervisorctl start survace_process_listener || true
+    sudo supervisorctl update
 }
 
 function add_user
