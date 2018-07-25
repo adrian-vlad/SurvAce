@@ -157,6 +157,7 @@ TODO
 
 ## TODO
 - add some images to this readme;
+- when installing stop all the survace related supervisor processes;
 - it seems there is a problem when a maximum of 2 live view pages can be opened at a moment;
 - add play speed modifier buttons.
 
