@@ -522,6 +522,7 @@ function install_all
     sudo mount "${h5stream_temp_dir}"
 
     # start supervisor
+    sudo supervisorctl reread
     for ((i = 1; i <= $CAM_COUNT; i++))
     do
         sudo supervisorctl start ${SUPERVISOR_GROUP_CAM_PREFIX}${i}: || true
