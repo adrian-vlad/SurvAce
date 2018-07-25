@@ -376,7 +376,7 @@ function conf_supervisord
         conf_path="supervisor_conf/survace_${SUPERVISOR_GROUP_CAM_PREFIX}${i}.conf"
         touch ${conf_path}
 
-        # create conf for live55 proxy
+        # create conf for live555 proxy
         echo "[program:${SUPERVISOR_GROUP_CAM_PREFIX}${i}_live555proxy]" >> ${conf_path}
         echo "command=$SURVACE_INSTALL_DIR/nice_and_drop.py $SYSTEM_USER -5 $LIVE555_INSTALL_DIR/live555ProxyServer -p ${LOCAL_PROXY_RTSP_PORT} \"${REMOTE_URL}\"" >> ${conf_path}
         echo "umask=022" >> ${conf_path}
