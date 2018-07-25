@@ -197,9 +197,11 @@ Thanks to all the people that developed these awesome tools:
 - ubuntu
 - unix in general.
 
-Thanks to everyone that has taken an interest in this project by reading, downloading, testing, or providing feedback. This project lives through me, but mostly through the people that got in touch with SurvAce.
+Thanks to everyone that has taken and will take an interest in this project by reading, downloading, testing, or providing feedback. This project lives through me, but mostly through the people that got in touch with SurvAce.
 
 ## Donation
 I'm working on this project on my spare time, so, if you want to show your appreciation even more, feel free to give me a beer.
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M5W46KCX8DM6S)
+
+Also, please support the creators of the aforementioned tools. They do a great job and deserve to be supported.
