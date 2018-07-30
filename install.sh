@@ -426,9 +426,6 @@ function install_all
         sudo umount -fl "${h5stream_temp_dir}"
     fi
 
-    sudo mkdir -p "${VIDEO_DIR}/recordings/"
-    sudo chown -R $SYSTEM_USER:$SYSTEM_USER "${VIDEO_DIR}/recordings/"
-
     # add startup mounts
     sudo cp /etc/fstab /etc/fstab_`date +%Y_%m_%d_%H_%M_%S`.old
     if ! grep -Fq "${recordings_dir}" /etc/fstab; then
@@ -494,7 +491,7 @@ function install_all
     sudo chown -R ${SYSTEM_USER}:${SYSTEM_USER} ${SURVACE_INSTALL_DIR}
 
     # create recordings directory
-    sudo mkdir -pv ${VIDEO_DIR}
+    sudo mkdir -pv ${VIDEO_DIR}/recordings/
 
     # create directories for each camera
     for ((i = 1; i <= $CAM_COUNT; i++))
@@ -502,7 +499,7 @@ function install_all
         # create directories for each day for a week
         for ((j = 0; j <= 7; j++))
         do
-            sudo mkdir -pv ${VIDEO_DIR}/${WEBSITE_CAM_PREFIX}${i}/`date +%Y_%m_%d -d "+${j} day"`/
+            sudo mkdir -pv ${VIDEO_DIR}/recordings/${WEBSITE_CAM_PREFIX}${i}/`date +%Y_%m_%d -d "+${j} day"`/
         done
     done
 
