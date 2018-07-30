@@ -15,7 +15,7 @@ SurvAce does the following:
 - high availability and fast response.
 
 ### Prerequisites
-The supported operating system is Ubuntu 16.04. It might work on higher versions of Ubuntu, but I haven't tested. The constraints of the operating system are given by the tools that SurvAce is using.
+The supported operating system is `Ubuntu 16.04 64bit`. It might work on higher versions of Ubuntu, but I haven't tested. The constraints of the operating system are given by the tools that SurvAce is using.
 
 The install script makes most of the preparements and installations. The only software that needs to be installed beforehand is `Google Chrome` browser which is used to operate SurvAce.
 
