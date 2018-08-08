@@ -101,8 +101,7 @@ function LiveViewVideo(name)
     video.autoplay = true;
 
     var conf = {
-        //TODO: replace this back to "videodom" once h5stream is fixed
-        I: video,
+        videodom: video,
         protocol: window.location.protocol, //http: or https:
         host: window.location.host, //localhost:8080
         rootpath: "/", // '/'
