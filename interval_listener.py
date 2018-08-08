@@ -61,7 +61,7 @@ def cleanup_drive_space():
 
         # remove one video from each camera
         for i in range(1, int(os.environ["CAM_COUNT"]) + 1):
-            files_list = list_files(os.path.join(os.environ["VIDEO_DIR"], website_cam_prefix + str(i)))
+            files_list = list_files(os.path.join(os.environ["VIDEO_DIR"], "recordings", website_cam_prefix + str(i)))
             if len(files_list) > 0:
                 os.remove(min(files_list))
 
