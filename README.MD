@@ -63,7 +63,7 @@ In order to add a new camera to the system, you'll have to run the install again
 
 ## How to use
 Accessing `http://<ip_of_SurvAce_machine>:8001/` in Google Chrome browser will open a directory listing with various files among which there are two html files: `live_view.html` and `recordings.html`:
-- `live_view.html` allows to view your configured cameras' video streams in real time. It is a simple page with a grid that contains the video player for each of your configured camera streams. The grid automatically resizes to fill as much as possible of the available display space while keeping all video players at the same size (no wonky one camera bigger that the others). You can view the live video of a particular camera in fullscreen text to the native functionality of the browser's video player.
+- `live_view.html` allows to view your configured cameras' video streams in real time. It is a simple page with a grid that contains the video player for each of your configured camera streams. The grid automatically resizes to fill as much as possible of the available display space while keeping all video players at the same size (no wonky one camera bigger than the others). You can view the live video of a particular camera in fullscreen text to the native functionality of the browser's video player.
 - `recordings.html` allows to browse through the recorded videos. This page has sliders to select day, hour, minute and seconds, play and pause buttons and the grid with the video players for each camera. All the video players are synchronized and, when played, they display the video from each camera for the exact moment that you selected. This way you can view at the same time from all the cameras what happened at that specific time. Each player also allows scrolling through the video and will synchronize all the other players. So you can scroll through the footage either using the sliders or the seek bar on the video players. Each video player allows to fullscreen or download that particular video file.
 
 ## How does it work
@@ -144,7 +144,7 @@ If everything works ok, you can now experiment with multiple cameras (phones), d
 
 ## Limitations
 ##### No security access
-At the moment, accessing SurvAce gui from the browser is not protected by any secury. It's basically free for all that have access to the network.
+At the moment, accessing SurvAce gui from the browser is not protected by any security. It's basically free for all that have access to the network.
 
 ##### No audio
 Because mp4 containers (the format of the video files saved by FFmpeg in Survace) do not support PCM audio (an audio encoding which is common in surveillance cameras) I choose not to save audio. Audio is not usually saved when doing surveillance anyway. If you want to also record audio, then you'll have to change and test the SurvAce scripts yourself.
