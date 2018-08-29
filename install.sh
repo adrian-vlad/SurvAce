@@ -224,7 +224,7 @@ function prepare_live555
 
     # compile
     ./genMakefiles ${PLATFORM}
-    make
+    make -j$(getconf _NPROCESSORS_ONLN)
     cd ..
 }
 
