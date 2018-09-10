@@ -159,7 +159,6 @@ TODO
 - add some images to this readme;
 - when installing stop all the survace related supervisor processes;
 - it seems there is a problem when a maximum of 2 live view pages can be opened at a moment;
-- add play speed modifier buttons.
 
 ## Motivation
 I started working on this project when I realized that there was no free lightweight NVR software available for Linux/Unix. There are some free alternatives, but most of them do heavy transcoding from h264, thus a very high CPU load.

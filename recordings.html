@@ -46,8 +46,10 @@
 <div id="controls" width=100%>
     <div>
         <!-- stock controls: play, pause, current time etc -->
-        <button id="play"           style="float: left;"    onclick="play()">&gt;</button>
-        <button id="pause"          style="float: left;"    onclick="stop()">||</button>
+        <button id="play"           style="float: left;"    onclick="play()"> &gt;</button>
+        <button id="pause"          style="float: left;"    onclick="stop()">| |</button>
+        <button id="speedDown"      style="float: left;"    onclick="speedDown()">&lt;&lt;</button>
+        <button id="speedUp"        style="float: left;"    onclick="speedUp()">&gt;&gt;</button>
         <button id="toggleControls" style="float: right;"   onclick="ToggleById('controllerDiv'); updateVideoDimensions()">=</button>
         <div id="DateTimeValue"     style="display: table; margin: auto;"></div>
     </div>
@@ -300,10 +302,10 @@ function UserInputVideo(name, onSeekCb, shouldPlayCb, playCb, stopCb, endedCb)
 
         this._wasSeek = false;
     };
-    video.doUpdate = function(timestamp) {
+    video.doUpdate = function(timestamp, playSpeed) {
         if (this._canBePlayed() && !this.ended)
             /* adjust the playback rate so that in the next 3 seconds the video timestamp aligns with the timestamp parameter */
-            this.playbackRate = 1 + (timestamp - this._getCurrentTimestamp()) / (3 * 1000);
+            this.playbackRate = playSpeed + (timestamp - this._getCurrentTimestamp()) / (3 * 1000);
         else
             endedCb(this.id);
     };
@@ -534,6 +536,7 @@ var playing = false;
 var timer = new Timer(1, updateSecond);
 var currentTimestamp = new Date();
 var videoStyleSheet;
+var playSpeed = 1;
 {
     var videoStyle = document.createElement("style");
     videoStyle.appendChild(document.createTextNode(""));
@@ -602,7 +605,7 @@ function updateTimestamp(timestamp)
 }
 function updateSecond()
 {
-    updateTimestamp(getCurrentTimestamp() + 1000);
+    updateTimestamp(getCurrentTimestamp() + playSpeed * 1000);
 
     updateAll(getCurrentTimestamp());
 }
@@ -612,7 +615,7 @@ function updateSecond()
  */
 function setDisplayTimestamp(timestamp)
 {
-    document.getElementById("DateTimeValue").innerHTML = new Date(timestamp).toLocaleTimeString(
+    document.getElementById("DateTimeValue").innerHTML = "speed: " + String(playSpeed) + " time: " + new Date(timestamp).toLocaleTimeString(
         "ro-RO",
         { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric", hour12: false });
 }
@@ -657,6 +660,16 @@ function getCurrentTimestamp()
 /**
  * Videos interactions
  */
+function speedDown()
+{
+    playSpeed = playSpeed - 1;
+    if (playSpeed <= 0)
+        playSpeed = 1;
+}
+function speedUp()
+{
+    playSpeed = playSpeed + 1;
+}
 function shouldPlay()
 {
     return playing;
@@ -754,7 +767,7 @@ function pauseAll()
 function updateAll(timestamp)
 {
     for (var camera in recordings.cameras)
-        document.getElementById(camera).doUpdate(timestamp);
+        document.getElementById(camera).doUpdate(timestamp, playSpeed);
 }
 </script>
 
