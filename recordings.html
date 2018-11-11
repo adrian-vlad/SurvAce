@@ -128,11 +128,12 @@ function DateTimeSliders(lowTimestamp, highTimestamp, updateTimestampCb, pauseCb
     /* functions */
     function _getTimestamp()
     {
-        return  firstDayTimestamp.valueOf() +
-                parseInt(dayRangeSlider.value) * dayMilis +
-                parseInt(hourRangeSlider.value) * hourMilis +
-                parseInt(minuteRangeSlider.value) * minuteMilis +
-                parseInt(secondRangeSlider.value) * secondMilis;
+        return moment(firstDayTimestamp)
+                .add(parseInt(dayRangeSlider.value), "day")
+                .add(parseInt(hourRangeSlider.value), "hour")
+                .add(parseInt(minuteRangeSlider.value), "minute")
+                .add(parseInt(secondRangeSlider.value), "second")
+                .valueOf();
     };
     innerDiv.setTimestamp = function(timestamp) {
         var m = moment(timestamp);
