@@ -1,3 +1,4 @@
+**I've made an improved version of this project that is using janus webrtc gateway instead of h5stream for live browser view: https://hub.docker.com/repository/docker/vladadrian/janus (https://github.com/adrian-vlad/docker/tree/master/janus)**
 # SurvAce
 
 A free and lightweight NVR-like surveillance system.
